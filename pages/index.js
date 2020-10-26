@@ -1,13 +1,13 @@
-import Link from 'next/link';
-import useSWR from 'swr';
-import { gql } from 'graphql-request';
-import Layout from '../components/layout';
-import styles from '../styles/Home.module.css';
-import { graphQLClient } from '../utils/graphql-client';
+import Link from 'next/link'
+import useSWR from 'swr'
+import { gql } from 'graphql-request'
+import Layout from '../components/layout'
+import styles from '../styles/Home.module.css'
+import { graphQLClient } from '../utils/graphql-client'
+import { getAuthCookie } from '../utils/auth-cookies'
 
-const fetcher = async (query) => await graphQLClient.request(query);
-
-const Home = () => {
+const Home = ({ token }) => {
+  const fetcher = async (query) => await graphQLClient(token).request(query)
   const { data, error, mutate } = useSWR(
     gql`
       {
@@ -20,8 +20,8 @@ const Home = () => {
         }
       }
     `,
-    fetcher
-  );
+    fetcher,
+  )
 
   const toggleTodo = async (id, completed) => {
     const query = gql`
@@ -31,20 +31,22 @@ const Home = () => {
           completed
         }
       }
-    `;
+    `
 
     const variables = {
       id,
       completed: !completed,
-    };
+    }
 
     try {
-      await graphQLClient.request(query, variables);
-      mutate();
+      await graphQLClient(token)
+        .setHeader('X-Schema-Preview', 'partial-update-mutation') //can also be setHeaders if more than one
+        .request(query, variables)
+      mutate()
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
-  };
+  }
 
   const deleteATodo = async (id) => {
     const query = gql`
@@ -53,23 +55,23 @@ const Home = () => {
           _id
         }
       }
-    `;
+    `
 
     try {
-      await graphQLClient.request(query, { id });
-      mutate();
+      await graphQLClient.request(query, { id })
+      mutate()
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
-  };
+  }
 
-  if (error) return <div>failed to load</div>;
+  if (error) return <Layout>failed to load</Layout>
 
   return (
     <Layout>
       <h1>Next Fauna GraphQL CRUD</h1>
 
-      <Link href="/new">
+      <Link href='/new'>
         <a>Create New Todo</a>
       </Link>
 
@@ -88,7 +90,7 @@ const Home = () => {
                 {todo.task}
               </span>
               <span className={styles.edit}>
-                <Link href="/todo/[id]" as={`/todo/${todo._id}`}>
+                <Link href='/todo/[id]' as={`/todo/${todo._id}`}>
                   <a>Edit</a>
                 </Link>
               </span>
@@ -105,7 +107,12 @@ const Home = () => {
         <div>loading...</div>
       )}
     </Layout>
-  );
-};
+  )
+}
 
-export default Home;
+export async function getServerSideProps(ctx) {
+  const token = getAuthCookie(ctx.req)
+  return { props: { token: token || null } }
+}
+
+export default Home
