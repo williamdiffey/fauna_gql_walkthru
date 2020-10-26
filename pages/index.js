@@ -8,6 +8,7 @@ import { getAuthCookie } from '../utils/auth-cookies'
 
 const Home = ({ token }) => {
   const fetcher = async (query) => await graphQLClient(token).request(query)
+
   const { data, error, mutate } = useSWR(
     gql`
       {
@@ -24,7 +25,7 @@ const Home = ({ token }) => {
   )
 
   const toggleTodo = async (id, completed) => {
-    const query = gql`
+    const mutation = gql`
       mutation PartialUpdateTodo($id: ID!, $completed: Boolean!) {
         partialUpdateTodo(id: $id, data: { completed: $completed }) {
           _id
@@ -40,8 +41,8 @@ const Home = ({ token }) => {
 
     try {
       await graphQLClient(token)
-        .setHeader('X-Schema-Preview', 'partial-update-mutation') //can also be setHeaders if more than one
-        .request(query, variables)
+        .setHeader('X-Schema-Preview', 'partial-update-mutation')
+        .request(mutation, variables)
       mutate()
     } catch (error) {
       console.error(error)
@@ -49,7 +50,7 @@ const Home = ({ token }) => {
   }
 
   const deleteATodo = async (id) => {
-    const query = gql`
+    const mutation = gql`
       mutation DeleteATodo($id: ID!) {
         deleteTodo(id: $id) {
           _id
@@ -58,14 +59,19 @@ const Home = ({ token }) => {
     `
 
     try {
-      await graphQLClient.request(query, { id })
+      await graphQLClient(token).request(mutation, { id })
       mutate()
     } catch (error) {
       console.error(error)
     }
   }
 
-  if (error) return <Layout>failed to load</Layout>
+  if (error)
+    return (
+      <Layout>
+        <div>failed to load</div>
+      </Layout>
+    )
 
   return (
     <Layout>
